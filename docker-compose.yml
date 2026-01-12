@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: jobflowuser
+      POSTGRES_PASSWORD: jobflowpass
+      POSTGRES_DB: jobflowuserdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgres://jobflowuser:jobflowpass@postgres:5432/jobflowuserdb
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend:/app
+    command: npm run dev
+
+volumes:
+  pgdata:
