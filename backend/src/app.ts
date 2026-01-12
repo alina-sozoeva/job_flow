@@ -2,10 +2,17 @@ import express from "express";
 
 import { pool } from "./db";
 
+import cors from "cors";
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 app.get("/health", (_req, res) => {
   res.send({ status: "ok" });
@@ -36,6 +43,8 @@ app.get("/test-flow", async (_req, res) => {
 app.get("/jobs", async (_req, res) => {
   try {
     const result = await pool.query("SELECT * FROM jobs");
+
+    console.log(result.rows, "result1111");
 
     res.json({ message: "done", result: result.rows });
   } catch (err) {
@@ -79,6 +88,9 @@ app.patch("/update-job/:id", async (_req, res) => {
 
 app.delete("/remove-job/:id", async (_req, res) => {
   const { id } = _req.params;
+
+  console.log(id, "id");
+
   try {
     await pool.query("DELETE FROM jobs WHERE id =$1", [id]);
 
