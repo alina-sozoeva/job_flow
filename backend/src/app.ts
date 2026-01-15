@@ -101,6 +101,75 @@ app.delete("/remove-job/:id", async (_req, res) => {
   }
 });
 
+app.get("/tasks", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * from tasks");
+
+    res.json({ message: "done", result: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.json({ message: "error", result: err });
+  }
+});
+
+const searchTask = app.get("/search-task", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM tasks 
+    WHERE status = 'pending' 
+    AND next_run_at <= NOW() 
+    LIMIT 1;`
+    );
+
+    res.json({ message: "done", result: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.json({ message: "error", result: err });
+  }
+});
+
+const startWorker = () => {
+  setInterval(async () => {
+    const selectResult = await pool.query(
+      `SELECT * FROM tasks 
+      WHERE status = 'pending' 
+      AND next_run_at <= NOW() LIMIT 1`
+    );
+
+    if (selectResult.rows.length === 0) return;
+
+    const task = selectResult.rows[0];
+
+    try {
+      console.log(`Пробую выполнить: ${task.title}`);
+
+      if (Math.random() > 0.5) throw new Error("Boom!");
+
+      await pool.query(
+        `UPDATE tasks 
+        SET status = 'completed', 
+        attempts = attempts + 1 
+        WHERE id = $1`,
+        [task.id]
+      );
+      console.log("✅ Успешно!");
+    } catch (err) {
+      console.log("❌ Сбой! Планирую повтор через 1 минуту...");
+
+      await pool.query(
+        `UPDATE tasks 
+         SET status = 'pending', 
+             attempts = attempts + 1, 
+             next_run_at = NOW() + INTERVAL '1 minute' 
+         WHERE id = $1`,
+        [task.id]
+      );
+    }
+  }, 10000);
+};
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+startWorker();
